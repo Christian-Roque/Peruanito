@@ -11,63 +11,19 @@ import (
 	"proyecto-nlp/utils"
 )
 
-// 🔹 Obtener CSV
-func obtenerArchivosCSV() []string {
-	files, _ := os.ReadDir("datasets")
-
-	var archivos []string
-
-	for _, f := range files {
-		if strings.HasSuffix(strings.ToLower(f.Name()), ".csv") {
-			archivos = append(archivos, "datasets/"+f.Name())
-		}
-	}
-
-	return archivos
-}
-
-// 🔹 Leer todos los CSV y unirlos
-func cargarDataset(archivos []string) [][]string {
-
-	var todos [][]string
-
-	for _, path := range archivos {
-
-		file, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-
-		reader := csv.NewReader(file)
-		records, err := reader.ReadAll()
-		file.Close()
-
-		if err != nil || len(records) == 0 {
-			continue
-		}
-
-		todos = append(todos, records...)
-	}
-
-	return todos
-}
-
 // 🔹 Detectar columna SUMILLA
 func obtenerIndiceSumilla(headers []string) int {
-
 	for i, h := range headers {
 		h = strings.ToLower(strings.TrimSpace(h))
 		if strings.Contains(h, "sumilla") {
 			return i
 		}
 	}
-
 	return 5
 }
 
 // 🔹 Media recortada
 func mediaRecortada(valores []float64) float64 {
-
 	sort.Float64s(valores)
 
 	if len(valores) > 2 {
@@ -84,10 +40,24 @@ func mediaRecortada(valores []float64) float64 {
 
 func main() {
 
-	fmt.Println("===== BENCHMARK NLP =====")
+	fmt.Println("===== BENCHMARK NLP (Workers Scaling) =====")
 
-	archivos := obtenerArchivosCSV()
-	records := cargarDataset(archivos)
+	// 🔥 Dataset grande
+	path := "salida/dataset_para_go.csv"
+
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println("Error abriendo dataset")
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error leyendo dataset")
+		return
+	}
 
 	if len(records) == 0 {
 		fmt.Println("No hay datos")
@@ -99,40 +69,56 @@ func main() {
 	fmt.Println("Total registros:", len(records))
 
 	runs := 5
-	workers := 4
+	workersList := []int{1, 2, 4, 6, 8, 10, 12}
+
+	// =============================
+	// 🔹 BASELINE SECUENCIAL
+	// =============================
+	fmt.Println("\n===== TIEMPO SECUENCIAL BASE =====")
 
 	var tiemposSec []float64
-	var tiemposConc []float64
 
 	for i := 0; i < runs; i++ {
-
-		fmt.Println("Ejecución:", i+1)
-
-		// 🔹 Secuencial
 		start := time.Now()
 		utils.ProcesarSecuencial(records, indice)
-		tSec := time.Since(start).Seconds()
+		t := time.Since(start).Seconds()
 
-		// 🔹 Concurrente
-		start = time.Now()
-		utils.ProcesarConcurrente(records, indice, workers)
-		tConc := time.Since(start).Seconds()
+		fmt.Println("Run", i+1, ":", t)
 
-		fmt.Println("Secuencial:", tSec)
-		fmt.Println("Concurrente:", tConc)
-		fmt.Println("-----------")
-
-		tiemposSec = append(tiemposSec, tSec)
-		tiemposConc = append(tiemposConc, tConc)
+		tiemposSec = append(tiemposSec, t)
 	}
 
 	avgSec := mediaRecortada(tiemposSec)
-	avgConc := mediaRecortada(tiemposConc)
 
-	speedup := avgSec / avgConc
+	fmt.Println("Promedio secuencial (media recortada):", avgSec)
 
-	fmt.Println("===== RESULTADOS =====")
-	fmt.Println("Tiempo promedio secuencial:", avgSec)
-	fmt.Println("Tiempo promedio concurrente:", avgConc)
-	fmt.Println("Speedup:", speedup)
+	// =============================
+	// 🔹 PRUEBAS CON WORKERS
+	// =============================
+	fmt.Println("\n===== RESULTADOS POR WORKERS =====")
+
+	fmt.Printf("%-10s %-20s %-20s\n", "Workers", "Tiempo (s)", "Speedup")
+
+	for _, workers := range workersList {
+
+		var tiemposConc []float64
+
+		fmt.Println("\nWorkers:", workers)
+
+		for i := 0; i < runs; i++ {
+			start := time.Now()
+			utils.ProcesarConcurrente(records, indice, workers)
+			t := time.Since(start).Seconds()
+
+			fmt.Println("Run", i+1, ":", t)
+
+			tiemposConc = append(tiemposConc, t)
+		}
+
+		avgConc := mediaRecortada(tiemposConc)
+		speedup := avgSec / avgConc
+
+		fmt.Printf("\n➡ Workers: %d | Tiempo promedio: %.6f | Speedup: %.4f\n",
+			workers, avgConc, speedup)
+	}
 }
