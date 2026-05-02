@@ -4,49 +4,75 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"strings"
 )
 
-func AnalizarDataset(path string) {
-	file, err := os.Open(path)
-	if err != nil {
-		fmt.Println("Error abriendo:", path)
-		return
-	}
-	defer file.Close()
+func AnalizarDatasetGlobal(archivos []string) {
+	totalFilas := 0
+	totalColumnas := 0
+	totalNulos := 0
+	ejemplos := []string{}
 
-	reader := csv.NewReader(file)
-	records, err := reader.ReadAll()
-	if err != nil {
-		fmt.Println("Error leyendo:", path)
-		return
-	}
+	for _, path := range archivos {
 
-	totalFilas := len(records) - 1
-	totalColumnas := len(records[0])
-
-	nulos := 0
-
-	for i, row := range records {
-		if i == 0 {
+		file, err := os.Open(path)
+		if err != nil {
+			fmt.Println("Error abriendo:", path)
 			continue
 		}
 
-		if len(row) < 6 || row[5] == "" {
-			nulos++
+		reader := csv.NewReader(file)
+		records, err := reader.ReadAll()
+		file.Close()
+
+		if err != nil || len(records) == 0 {
+			fmt.Println("Error leyendo:", path)
+			continue
+		}
+
+		headers := records[0]
+		totalColumnas += len(headers)
+
+		// 🔹 Buscar columna SUMILLA dinámicamente
+		indiceSumilla := -1
+		for i, h := range headers {
+			h = strings.ToLower(strings.TrimSpace(h))
+			if strings.Contains(h, "sumilla") {
+				indiceSumilla = i
+				break
+			}
+		}
+
+		// fallback
+		if indiceSumilla == -1 {
+			indiceSumilla = 5
+		}
+
+		for i, row := range records {
+			if i == 0 {
+				continue
+			}
+
+			totalFilas++
+
+			if len(row) <= indiceSumilla || row[indiceSumilla] == "" {
+				totalNulos++
+			} else if len(ejemplos) < 3 {
+				ejemplos = append(ejemplos, row[indiceSumilla])
+			}
 		}
 	}
 
-	fmt.Println("===== EDA =====")
-	fmt.Println("Archivo:", path)
-	fmt.Println("Filas:", totalFilas)
-	fmt.Println("Columnas:", totalColumnas)
-	fmt.Println("Sumillas vacías:", nulos)
+	fmt.Println("===== EDA GLOBAL =====")
+	fmt.Println("Total archivos:", len(archivos))
+	fmt.Println("Total registros:", totalFilas)
+	fmt.Println("Promedio columnas:", totalColumnas/len(archivos))
+	fmt.Println("Sumillas vacías:", totalNulos)
 
-	// Mostrar ejemplo
-	fmt.Println("Ejemplo SUMILLA:")
-	for i := 1; i < len(records) && i <= 3; i++ {
-		fmt.Println("-", records[i][5])
+	fmt.Println("\nEjemplos SUMILLA:")
+	for _, e := range ejemplos {
+		fmt.Println("-", e)
 	}
 
-	fmt.Println("================")
+	fmt.Println("======================")
 }

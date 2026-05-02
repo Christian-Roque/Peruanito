@@ -15,3 +15,9 @@ Evaluar el rendimiento (speedup) del procesamiento concurrente sobre grandes vol
 
 ## Dataset
 Fuente: Plataforma Nacional de Datos Abiertos - Dispositivos Legales (El Peruano)
+
+# PC1 (procesamiento y limpieza)
+go run pc1.go
+
+# PC2 (benchmark secuencial vs concurrente)
+go run pc2.go

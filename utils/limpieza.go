@@ -8,25 +8,16 @@ import (
 func LimpiarTexto(text string) string {
 	text = strings.ToLower(text)
 
-	// 🔹 corregir caracteres mal codificados comunes
+	// eliminar tildes
 	replacer := strings.NewReplacer(
-		"á", "a", "à", "a", "ä", "a", "â", "a",
-		"é", "e", "è", "e", "ë", "e", "ê", "e",
-		"í", "i", "ì", "i", "ï", "i", "î", "i",
-		"ó", "o", "ò", "o", "ö", "o", "ô", "o",
-		"ú", "u", "ù", "u", "ü", "u", "û", "u",
-		"ñ", "n",
-		"�", "", // eliminar basura
+		"á", "a", "é", "e", "í", "i",
+		"ó", "o", "ú", "u", "ñ", "n",
 	)
-
 	text = replacer.Replace(text)
 
-	// 🔹 eliminar caracteres no válidos
-	re := regexp.MustCompile(`[^a-z\s]`)
-	text = re.ReplaceAllString(text, "")
-
-	// 🔹 limpiar espacios
-	text = strings.TrimSpace(text)
+	// eliminar caracteres especiales
+	reg := regexp.MustCompile(`[^a-z0-9\s]`)
+	text = reg.ReplaceAllString(text, "")
 
 	return text
 }
