@@ -1,31 +1,44 @@
-#define N 5
-#define DATOS 5
+chan tareas = [5] of {int};
+chan procesado = [5] of {int};
 
-chan buffer = [N] of { byte };
-
-proctype Productor() {
-    byte i = 0;
-
+active proctype Productor() {
+    int i = 0;
     do
-    :: (i < DATOS) ->
-        buffer!i;
-        printf("Productor envia: %d\n", i);
+    :: i < 10 ->
+        printf("Productor envia texto RAW %d\n", i);
+        tareas!i;
         i++
-    :: else ->
-        break
+    :: else -> break
     od
 }
 
-proctype Consumidor() {
-    byte dato;
-
+active proctype Worker() {
+    int t;
     do
-    :: buffer?dato ->
-        printf("Consumidor procesa: %d\n", dato)
+    :: tareas?t ->
+        printf("Worker recibe texto %d\n", t);
+
+        /* Simulación del pipeline NLP */
+        printf(" - limpiando texto\n");
+        printf(" - tokenizando\n");
+        printf(" - eliminando stopwords\n");
+
+        procesado!t
+    od
+}
+
+active proctype Consumidor() {
+    int r;
+    do
+    :: procesado?r ->
+        printf("Consumidor recibe texto LIMPIO %d\n", r)
     od
 }
 
 init {
     run Productor();
+    run Worker();
+    run Worker();
+    run Worker(); // más concurrencia
     run Consumidor();
 }
