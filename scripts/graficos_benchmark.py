@@ -78,7 +78,7 @@ def main():
     labels = [w for w in ordered if w in set(raw_conc["workers"])]
 
     plt.figure(figsize=(10, 5))
-    plt.boxplot(data, tick_labels=labels, showmeans=True)
+    plt.boxplot(data, labels=labels, showmeans=True)
     plt.title("Distribución de tiempos en las ejecuciones concurrentes")
     plt.xlabel("Workers / goroutines")
     plt.ylabel("Tiempo (segundos)")
